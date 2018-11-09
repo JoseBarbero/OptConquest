@@ -191,6 +191,7 @@ def find_best_params(dataset):
               f"Best fmed {temp_min_fmed}")
         if temp_fmed < lowest_fmed:
             best_params = [p_size, n_elite, mut_perc]
+            lowest_fmed = temp_fmed
         results_df.to_csv("fmedByParams.csv", sep='\t', encoding='utf-8')
     print("Best params:", best_params)
     return best_params
