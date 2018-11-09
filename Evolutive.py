@@ -40,7 +40,6 @@ def ox_reproduction(population, target_len, elite_size):
     """
     pop_len = len(population)  # Se calcula antes porque la población va creciendo
     new_pop = []
-    print(elite_size, target_len)
     for i in range(elite_size, target_len):
         indexes = np.random.choice(pop_len, 2)
         new_pop.append(cruce_pseudo_ox(population[indexes[0]], population[indexes[1]]))
@@ -56,8 +55,6 @@ def cruce_pseudo_ox(parent1, parent2):
     p2_aux = parent2[np.logical_not(np.isin(parent2, p1_aux))]
 
     return np.array([*p2_aux[:index_ini], *p1_aux, *p2_aux[index_ini:]])
-
-    # PROBAR CON MÁSCARAS. LA IDEA ES METER LOS DEL PRIMERO Y LOS QUE NO SEAN ESOS DEL SEGUNDO
 
 
 def get_best_solution(pop, data):
@@ -118,21 +115,23 @@ def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10, di
 
         pop = evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size,
                                    sel_f, elite_f, rep_f, mut_f)
-        current_fmed = get_best_solution(pop, data)[0]
-        if current_fmed < best:
-            best = current_fmed
-            not_improving = 0
-        else:
-            if not_improving < not_improving_limit:
-                not_improving += 1
-            else:   # Si no mejoramos en x generaciones metemos parámetros más agresivos
-                # Los cálculos controlan que no se pase del tamaño de la población
-                mut_ratio += (100-mut_ratio)/10
-                diversify_size += int((len(pop)-diversify_size)/10)
+        if not_improving_limit:
+            current_fmed = get_best_solution(pop, data)[0]
+            print(not_improving_limit)
+            if current_fmed < best:
+                best = current_fmed
                 not_improving = 0
+            else:
+                if not_improving < not_improving_limit:
+                    not_improving += 1
+                else:   # Si no mejoramos en x generaciones metemos parámetros más agresivos
+                    # Los cálculos controlan que no se pase del tamaño de la población
+                    mut_ratio += (100-mut_ratio)/10
+                    diversify_size += int((len(pop)-diversify_size)/10)
+                    not_improving = 0
 
         # print('\r' + str(i + 1) + "/" + str(generations), end='')
-        print(get_best_solution(pop, data))
+        # print(get_best_solution(pop, data))
 
     # 3. Retornar mejor solución
     return get_best_solution(pop, data)

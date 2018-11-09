@@ -4,12 +4,14 @@ from RandomAlgorithm import *
 
 # ini = time.time()
 # print(evaluate_algorithm(evolutive_algorithm, [read_file("Datasets/Doc11.txt"), 100]))
-print(evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=150,
-                          time_=60, elite_size=5, mut_ratio=0.05, diversify_size=0, not_improving_limit=3,
+
+print(evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
+                          time_=60, elite_size=1, mut_ratio=50, diversify_size=1, not_improving_limit=False,
                           sel_f=median_selection,
                           elite_f=get_elite,
                           rep_f=ox_reproduction,
                           mut_f=mutate))
+
 # fin = time.time()
 # print("Time spend:", fin-ini)
 
