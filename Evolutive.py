@@ -13,7 +13,7 @@ def generate_random_population(sol_size, pop_size):
     return [create_random_solution(sol_size) for _ in range(pop_size)]
 
 
-def median_selection(population, data):
+def mean_selection(population, data):
     """
     Nos quedamos con los que son mejores que la media de los fmed de toda la población.
     """
@@ -40,7 +40,6 @@ def ox_reproduction(population, target_len, elite_size):
     """
     pop_len = len(population)  # Se calcula antes porque la población va creciendo
     new_pop = []
-    print(elite_size, target_len)
     for i in range(elite_size, target_len):
         indexes = np.random.choice(pop_len, 2)
         new_pop.append(cruce_pseudo_ox(population[indexes[0]], population[indexes[1]]))
@@ -88,79 +87,43 @@ def mutate(pop, data, ratio):
 
 
 def get_elite(pop, data, size):
-    if size == 1:  # Más eficiente que ordenar toda la población
+    if size == 1:
         return [get_best_solution(pop, data)[1]]
     else:
         return get_n_best_solutions(pop, data, size)
 
 
-def get_elite_with_rep(pop, data, size):
-    """
-    Seleccionamos la élite y la reproducimos para tener asegurados hijos de la élite en la siguiente.
-    """
-    elite = get_elite(pop, data, size)
-    if size < 2:
-        elite.extend(elite)
-    elite.extend(ox_reproduction(pop, size * 2, size))
-    return elite
-
-
-def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10, diversify_size=0, not_improving_limit=5,
-                        sel_f=median_selection, elite_f=get_elite, rep_f=ox_reproduction, mut_f=mutate):
+def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10):
     # 1. Crear población
     pop = generate_random_population(len(data), pop_size)
 
     # 2. Bucle de evolución (mientras no se alcance la condición de parada)
 
     t_end = time.time() + time_ - 0.5
-    best = np.inf
+    # for i in range(generations):
     while time.time() < t_end:
 
-        pop = evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size,
-                                   sel_f, elite_f, rep_f, mut_f)
-        current_fmed = get_best_solution(pop, data)[0]
-        if current_fmed < best:
-            best = current_fmed
-            not_improving = 0
-        else:
-            if not_improving < not_improving_limit:
-                not_improving += 1
-            else:   # Si no mejoramos en x generaciones metemos parámetros más agresivos
-                # Los cálculos controlan que no se pase del tamaño de la población
-                mut_ratio += (100-mut_ratio)/10
-                diversify_size += int((len(pop)-diversify_size)/10)
-                not_improving = 0
+        pop = evolutive_generation(data, pop, pop_size, elite_size, mut_ratio)
 
         # print('\r' + str(i + 1) + "/" + str(generations), end='')
-        print(get_best_solution(pop, data))
+        # print(get_best_solution(pop, data))
 
     # 3. Retornar mejor solución
     return get_best_solution(pop, data)
 
 
-def diversify(pop, target_size):
-    """
-    Añade población random para evitar mínimos locales.
-    """
-    pop.extend(generate_random_population(len(pop[0]), target_size-len(pop)))
-    return pop
-
-
-def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
+def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio):
     # 2.1. Selección
-    pop = sel_f(pop, data)
+    pop = mean_selection(pop, data)
 
     # 2.2. Elitismo
-    elite = elite_f(pop, data, elite_size)
+    elite = get_elite(pop, data, elite_size)
 
     # 2.2. Reproducción
-    pop = rep_f(pop, pop_size-diversify_size, elite_size)
+    pop = ox_reproduction(pop, pop_size, elite_size)
 
     # 2.4. Mutación
-    pop = mut_f(pop, data, mut_ratio)
-
-    # 2.5. Diversificación
-    pop = diversify(pop, pop_size)
+    pop = mutate(pop, data, mut_ratio)
 
     # 2.5. Combinar élite con el resto
     pop.extend(elite)
@@ -197,9 +160,8 @@ def find_best_params(dataset):
 
 # Mejoras
 # . Evitar que la mejor solución se mantenga igual (pasa en varias generaciones, sobretodo al final)
+# . Función para evaluar cómo de buena es una solución
+# . Calcular los parámetros tamaño/generaciones más óptimos para ese tamaño de problema
 # . Crear clase para una población
 # . Correr en paralelo
 # . Hacer una especie de elitismo inverso en el que todas las generaciones se meta algo aleatorio nuevo
-# . Elitismo copiando varias veces el mejor para que se reproduzcan entre ellos (¿forzar reproducción de los mejores?)
-# . Probar cambiando arrays/lists
-# . Si no mejoramos en x generaciones meter parámetros/algoritmos más agresivos
