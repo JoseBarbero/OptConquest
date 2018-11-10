@@ -2,6 +2,7 @@ import operator
 import time
 import itertools
 import pandas as pd
+import random as rnd
 from RandomAlgorithm import *
 from FlowShopUtils import *
 
@@ -18,14 +19,21 @@ def median_selection(population, data):
     Nos quedamos con los que son mejores que la media de los fmed de toda la población.
     """
     pop_fmed = [fmed(f(solution, data)) for solution in population]
-    test = [sol for sol, f_med in zip(population, pop_fmed) if f_med <= np.median(pop_fmed)]
-    return test
+    pop = [sol for sol, f_med in zip(population, pop_fmed) if f_med <= np.median(pop_fmed)]
+    return pop
+
+
+def tournament_selection(population, data, wanted_size=30, p=2):
+    """
+    Selección por torneo determinista.
+    """
+    pop = []
+    for _ in range(wanted_size):
+        pop.append(get_best_solution(rnd.sample(population, p), data)[1])
+    return pop
 
 
 def basic_reproduction(population, pop_size):
-    """
-
-    """
     # Idea: reproducir más veces a los que más fmed tengan
     # De momento se rellenan al azar con copias de lo que ya hay
     # Deberían mezclarse fragmentos de una solución con fragmentos de otra
@@ -61,6 +69,8 @@ def get_best_solution(pop, data):
     """
     Obtiene la mejor solución de una población.
     """
+    #TODO esto es lo más costoso de todo el algoritmo, hay que optimizar
+    #TODO meter el elitismo aquí para ahorrar el cálculo otra vez
     return min([(fmed(f(solution, data)), solution) for solution in pop], key=operator.itemgetter(0))
 
 
@@ -69,26 +79,24 @@ def get_n_best_solutions(pop, data, n_top):
     return [x[1] for x in elite]
 
 
-def mutate(pop, data, ratio):
+def mutate(pop, ratio):
     """
     Produce intercambios entre dos posiciones aleatorias de cada solución menos la mejor.
     """
-    best = get_best_solution(pop, data)[1].copy()  # Si no copiamos se modifica después
     for i in range(len(pop)):
         if np.random.randint(100) < ratio:  # Mutan solo un 5%
             swap_indexes = np.random.choice(pop[i], 2)
             pop[i][swap_indexes[0]], pop[i][swap_indexes[1]] = pop[i][swap_indexes[1]], pop[i][swap_indexes[0]]
-    # Me cargo la primera solución para meter la mejor
-    # porque calcular el índice de la mejor puede resultar demasiado lento
-    pop[0] = best
     return pop
 
 
 def get_elite(pop, data, size):
     if size == 1:  # Más eficiente que ordenar toda la población
         return [get_best_solution(pop, data)[1]]
-    else:
+    elif size > 1:
         return get_n_best_solutions(pop, data, size)
+    else:
+        return []
 
 
 def get_elite_with_rep(pop, data, size):
@@ -146,23 +154,43 @@ def diversify(pop, target_size):
 
 
 def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
+    step0 = time.time()
     # 2.1. Selección
     pop = sel_f(pop, data)
+
+    step1 = time.time()
 
     # 2.2. Elitismo
     elite = elite_f(pop, data, elite_size)
 
+    step2 = time.time()
+
     # 2.2. Reproducción
     pop = rep_f(pop, pop_size-diversify_size, elite_size)
 
+    step3 = time.time()
+
     # 2.4. Mutación
-    pop = mut_f(pop, data, mut_ratio)
+    pop = mut_f(pop, mut_ratio)
+
+    step4 = time.time()
 
     # 2.5. Diversificación
     pop = diversify(pop, pop_size)
 
+    step5 = time.time()
+
     # 2.5. Combinar élite con el resto
     pop.extend(elite)
+
+    step6 = time.time()
+
+    print(f"%Selección: {(step1-step0)/(step6-step0)*100} \t "
+          f"%Elitismo: {(step2-step1)/(step6-step0)*100} \t "
+          f"%Reproducción: {(step3-step2)/(step6-step0)*100} \t "
+          f"%Mutación: {(step4-step3)/(step6-step0)*100} \t "
+          f"%Diversificación: {(step5-step4)/(step6-step0)*100} \t "
+          f"%Combinar: {(step6-step5)/(step6-step0)*100}")
 
     return pop
 
