@@ -14,14 +14,31 @@ def generate_random_population(sol_size, pop_size):
     return [create_random_solution(sol_size) for _ in range(pop_size)]
 
 
-def median_selection(population, data, alpha):
+def median_selection(population, data, alpha=1):
     """
     Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
     """
-    #TODO meter el elitismo aquí para ahorrar el cálculo otra vez
+    pop_fmed = [fmed(f(solution, data)) for solution in population]
+    median_fmed = np.median(pop_fmed)*alpha
+    pop = []
+    best_fmed = np.inf  # TODO permitir más de uno en la élite
+    for solution, solution_fmed in zip(population, pop_fmed):
+        if solution_fmed <= median_fmed:
+            pop.append(solution)
+            if solution_fmed < best_fmed:
+                best_fmed = solution_fmed
+                best_solution = solution
+    return pop, best_solution
+
+
+def old_median_selection(population, data):
+    """
+    Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
+    """
     pop_fmed = [fmed(f(solution, data)) for solution in population]
     pop = [sol for sol, f_med in zip(population, pop_fmed) if f_med <= np.median(pop_fmed)]
     return pop
+
 
 
 def tournament_selection(population, data, wanted_size=30, p=2):
@@ -76,7 +93,6 @@ def get_best_solution(pop, data):
     Obtiene la mejor solución de una población.
     """
     #TODO esto es lo más costoso de todo el algoritmo, hay que optimizar
-    print("AAAAAA", pop)
     return min([(fmed(f(solution, data)), solution) for solution in pop], key=operator.itemgetter(0))
 
 
@@ -131,7 +147,6 @@ def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10, di
                                    sel_f, elite_f, rep_f, mut_f)
         if not_improving_limit:
             current_fmed = get_best_solution(pop, data)[0]
-            print(not_improving_limit)
             if current_fmed < best:
                 best = current_fmed
                 not_improving = 0
@@ -160,43 +175,43 @@ def diversify(pop, target_size):
 
 
 def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
-    step0 = time.time()
+    #step0 = time.time()
     # 2.1. Selección
     pop, elite = sel_f(pop, data)
 
-    step1 = time.time()
+    #step1 = time.time()
 
     # 2.2. Elitismo
-    #elite = elite_f(pop, data, elite_size)
+    # elite = elite_f(pop, data, elite_size)
 
-    step2 = time.time()
+    #step2 = time.time()
 
     # 2.2. Reproducción
     pop = rep_f(pop, pop_size-diversify_size, elite_size)
 
-    step3 = time.time()
+    #step3 = time.time()
 
     # 2.4. Mutación
     pop = mut_f(pop, mut_ratio)
 
-    step4 = time.time()
+    #step4 = time.time()
 
     # 2.5. Diversificación
     pop = diversify(pop, pop_size)
 
-    step5 = time.time()
+    #step5 = time.time()
 
     # 2.5. Combinar élite con el resto
-    pop.extend(elite)
+    pop.append(elite)
 
-    step6 = time.time()
+    #step6 = time.time()
 
-    print(f"%Selección: {(step1-step0)/(step6-step0)*100} \t "
-          f"%Elitismo: {(step2-step1)/(step6-step0)*100} \t "
-          f"%Reproducción: {(step3-step2)/(step6-step0)*100} \t "
-          f"%Mutación: {(step4-step3)/(step6-step0)*100} \t "
-          f"%Diversificación: {(step5-step4)/(step6-step0)*100} \t "
-          f"%Combinar: {(step6-step5)/(step6-step0)*100}")
+    #print(f"%Selección: {(step1-step0)/(step6-step0)*100} \t "
+    #      f"%Elitismo: {(step2-step1)/(step6-step0)*100} \t "
+    #      f"%Reproducción: {(step3-step2)/(step6-step0)*100} \t "
+    #      f"%Mutación: {(step4-step3)/(step6-step0)*100} \t "
+    #      f"%Diversificación: {(step5-step4)/(step6-step0)*100} \t "
+    #      f"%Combinar: {(step6-step5)/(step6-step0)*100}")
 
     return pop
 
