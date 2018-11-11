@@ -14,10 +14,11 @@ def generate_random_population(sol_size, pop_size):
     return [create_random_solution(sol_size) for _ in range(pop_size)]
 
 
-def median_selection(population, data):
+def median_selection(population, data, alpha):
     """
-    Nos quedamos con los que son mejores que la media de los fmed de toda la población.
+    Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
     """
+    #TODO meter el elitismo aquí para ahorrar el cálculo otra vez
     pop_fmed = [fmed(f(solution, data)) for solution in population]
     pop = [sol for sol, f_med in zip(population, pop_fmed) if f_med <= np.median(pop_fmed)]
     return pop
@@ -28,15 +29,20 @@ def tournament_selection(population, data, wanted_size=30, p=2):
     Selección por torneo determinista.
     """
     pop = []
+    best_fmed = np.inf
     for _ in range(wanted_size):
-        pop.append(get_best_solution(rnd.sample(population, p), data)[1])
-    return pop
+        winner_fmed, winner = get_best_solution(rnd.sample(population, p), data)
+        pop.append(winner)
+        if winner_fmed <= best_fmed:
+            best_solution = winner
+    return pop, best_solution
+
+
+def random_selection(population, _, wanted_size=50):
+    return rnd.sample(population, wanted_size)
 
 
 def basic_reproduction(population, pop_size):
-    # Idea: reproducir más veces a los que más fmed tengan
-    # De momento se rellenan al azar con copias de lo que ya hay
-    # Deberían mezclarse fragmentos de una solución con fragmentos de otra
     test = [population[i] for i in np.random.choice(len(population), pop_size - len(population))]
     population.extend(test)
     return population
@@ -46,7 +52,7 @@ def ox_reproduction(population, target_len, elite_size):
     """
     Genera una nueva población con hijos de los seleccionados
     """
-    pop_len = len(population)  # Se calcula antes porque la población va creciendo
+    pop_len = len(population)
     new_pop = []
     for i in range(elite_size, target_len):
         indexes = np.random.choice(pop_len, 2)
@@ -70,7 +76,7 @@ def get_best_solution(pop, data):
     Obtiene la mejor solución de una población.
     """
     #TODO esto es lo más costoso de todo el algoritmo, hay que optimizar
-    #TODO meter el elitismo aquí para ahorrar el cálculo otra vez
+    print("AAAAAA", pop)
     return min([(fmed(f(solution, data)), solution) for solution in pop], key=operator.itemgetter(0))
 
 
@@ -156,12 +162,12 @@ def diversify(pop, target_size):
 def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
     step0 = time.time()
     # 2.1. Selección
-    pop = sel_f(pop, data)
+    pop, elite = sel_f(pop, data)
 
     step1 = time.time()
 
     # 2.2. Elitismo
-    elite = elite_f(pop, data, elite_size)
+    #elite = elite_f(pop, data, elite_size)
 
     step2 = time.time()
 
