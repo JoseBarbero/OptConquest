@@ -1,52 +1,31 @@
+import time
+from multiprocessing import Pool
 from Evolutive import *
 from RandomAlgorithm import *
-from multiprocessing import Process
 
-results = []
 
-for mut_perc in [50]:
-    print(f"% Mutación: {mut_perc} ")
-    for _ in range(5):
-        results.append(evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
-                              time_=60, elite_size=1, mut_ratio=mut_perc, diversify_size=0, not_improving_limit=0,
-                              sel_f=median_selection,
-                              elite_f=get_elite,
-                              rep_f=ox_reproduction,
-                              mut_f=mutate)[0])
-    print(f"\tMedia: {sum(results)/len(results)}")
-    print(f"\tMínimo: {min(results)}")
-    print("\n")
+def worker(mutation):
+    # TODO devolver la solución en sí
+    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
+                          time_=60, elite_size=1, mut_ratio=mutation[1], diversify_size=0, not_improving_limit=0,
+                          sel_f=median_selection,
+                          elite_f=get_elite,
+                          rep_f=ox_reproduction,
+                          mut_f=mutate)[0]
 
-"""
-if __name__ == 'main':
-    p1 = Process(target=evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
-                              time_=60, elite_size=1, mut_ratio=mut_perc, diversify_size=0, not_improving_limit=0,
-                              sel_f=median_selection,
-                              elite_f=get_elite,
-                              rep_f=ox_reproduction,
-                              mut_f=mutate))
 
-    p2 = Process(target=evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
-                                            time_=60, elite_size=1, mut_ratio=mut_perc, diversify_size=0,
-                                            not_improving_limit=0,
-                                            sel_f=median_selection,
-                                            elite_f=get_elite,
-                                            rep_f=ox_reproduction,
-                                            mut_f=mutate))
+def parallel_evolutive(n_processes, mutation):
+    p = Pool(processes=n_processes)
+    results = p.map(worker, [(i, mutation) for i in range(n_processes)])
+    p.close()
+    return min(results)
 
-    p3 = Process(target=evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
-                                            time_=60, elite_size=1, mut_ratio=mut_perc, diversify_size=0,
-                                            not_improving_limit=0,
-                                            sel_f=median_selection,
-                                            elite_f=get_elite,
-                                            rep_f=ox_reproduction,
-                                            mut_f=mutate))
 
-    p4 = Process(target=evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop_size=100,
-                                            time_=60, elite_size=1, mut_ratio=mut_perc, diversify_size=0,
-                                            not_improving_limit=0,
-                                            sel_f=median_selection,
-                                            elite_f=get_elite,
-                                            rep_f=ox_reproduction,
-                                            mut_f=mutate))
-                                            """
+if __name__ == '__main__':
+    for mut in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]:
+        print(f"Mutation: {mut}")
+        res = []
+        for _ in range(5):
+            res.append(parallel_evolutive(4, mut))
+        print(f"\tMean: {sum(res)/len(res)}")
+        print(f"\tBest: {min(res)}")
