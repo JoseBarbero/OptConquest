@@ -22,10 +22,8 @@ def parallel_evolutive(n_processes, mutation):
 
 
 if __name__ == '__main__':
-    for mut in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]:
-        print(f"Mutation: {mut}")
-        res = []
-        for _ in range(5):
-            res.append(parallel_evolutive(4, mut))
-        print(f"\tMean: {sum(res)/len(res)}")
-        print(f"\tBest: {min(res)}")
+    res = []
+    for _ in range(5):
+        res.append(parallel_evolutive(4, 25))
+    print(f"\tMean: {sum(res)/len(res)}")
+    print(f"\tBest: {min(res)}")

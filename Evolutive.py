@@ -103,10 +103,12 @@ def get_n_best_solutions(pop, data, n_top):
 
 def mutate(pop, ratio):
     """
-    Produce intercambios entre dos posiciones aleatorias de cada solución menos la mejor.
+    Produce intercambios entre dos posiciones aleatorias de cada solución.
     """
+    #TODO mutar dentro del cruce para evitar otro bucle
+    #TODO otros métodos de mutación
     for i in range(len(pop)):
-        if np.random.randint(100) < ratio:  # Mutan solo un 5%
+        if np.random.randint(100) < ratio:
             swap_indexes = np.random.choice(pop[i], 2)
             pop[i][swap_indexes[0]], pop[i][swap_indexes[1]] = pop[i][swap_indexes[1]], pop[i][swap_indexes[0]]
     return pop
@@ -245,10 +247,5 @@ def find_best_params(dataset):
     return best_params
 
 # Mejoras
-# . Evitar que la mejor solución se mantenga igual (pasa en varias generaciones, sobretodo al final)
 # . Crear clase para una población
-# . Correr en paralelo
-# . Hacer una especie de elitismo inverso en el que todas las generaciones se meta algo aleatorio nuevo
-# . Elitismo copiando varias veces el mejor para que se reproduzcan entre ellos (¿forzar reproducción de los mejores?)
 # . Probar cambiando arrays/lists
-# . Si no mejoramos en x generaciones meter parámetros/algoritmos más agresivos
