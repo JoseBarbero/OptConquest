@@ -32,7 +32,27 @@ def f(solution, data):
     return cost_matrix
 
 
-def fmed(cost_matrix):
+def fmed(solution, data):
+    """
+    Calcula fmed a la vez que crea la matriz f (más eficiente).
+    """
+    cost_matrix = np.zeros_like(data)
+    cost_matrix[0] = np.add.accumulate(data[solution[0]])
+
+    # No se sigue el orden inicial de la matriz para evitar complicaciones de indexado,
+    # las filas van en el orden de la solución respecto a la matriz inicial
+    sum_last_column = 0
+    n_rows = len(solution)
+    n_cols = len(data[0])
+    for i in range(1, n_rows):
+        for j in range(n_cols):
+            cost_matrix[i][j] = max(cost_matrix[i - 1][j], cost_matrix[i][j - 1]) + data[solution[i]][j]
+            if j == n_cols-1:
+                sum_last_column += cost_matrix[i][j]
+    return sum_last_column/n_rows
+
+
+def old_fmed(cost_matrix):
     """
     Calcula el valor fmed de una matriz de costes.
     """

@@ -5,6 +5,7 @@ import pandas as pd
 import random as rnd
 from RandomAlgorithm import *
 from FlowShopUtils import *
+from multiprocessing import Pool, Queue, Process
 
 
 def generate_random_population(sol_size, pop_size):
@@ -14,31 +15,30 @@ def generate_random_population(sol_size, pop_size):
     return [create_random_solution(sol_size) for _ in range(pop_size)]
 
 
-def median_selection(population, data, alpha=1):
+def median_selection(population, data):
     """
     Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
     """
-    pop_fmed = [fmed(f(solution, data)) for solution in population]
-    median_fmed = np.median(pop_fmed)*alpha
+    pop_fmed = [fmed(solution, data) for solution in population]
+    median_fmed = np.median(pop_fmed)
     pop = []
     best_fmed = np.inf  # TODO permitir más de uno en la élite
     for solution, solution_fmed in zip(population, pop_fmed):
         if solution_fmed <= median_fmed:
             pop.append(solution)
-            if solution_fmed < best_fmed:
+            if solution_fmed <= best_fmed:
                 best_fmed = solution_fmed
                 best_solution = solution
-    return pop, best_solution
+    return pop, (best_fmed, best_solution)
 
 
 def old_median_selection(population, data):
     """
     Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
     """
-    pop_fmed = [fmed(f(solution, data)) for solution in population]
+    pop_fmed = [fmed(solution, data) for solution in population]
     pop = [sol for sol, f_med in zip(population, pop_fmed) if f_med <= np.median(pop_fmed)]
     return pop
-
 
 
 def tournament_selection(population, data, wanted_size=30, p=2):
@@ -65,7 +65,7 @@ def basic_reproduction(population, pop_size):
     return population
 
 
-def ox_reproduction(population, target_len, elite_size):
+def ox_reproduction(population, target_len, elite_size, mut_prob):
     """
     Genera una nueva población con hijos de los seleccionados
     """
@@ -73,7 +73,10 @@ def ox_reproduction(population, target_len, elite_size):
     new_pop = []
     for i in range(elite_size, target_len):
         indexes = np.random.choice(pop_len, 2)
-        new_pop.append(cruce_pseudo_ox(population[indexes[0]], population[indexes[1]]))
+        son = cruce_pseudo_ox(population[indexes[0]], population[indexes[1]])
+
+        # Se muta aquí para evitar otro bucle en la mutación
+        new_pop.append(swap_mutation(son, mut_prob))
     return new_pop
 
 
@@ -93,12 +96,20 @@ def get_best_solution(pop, data):
     Obtiene la mejor solución de una población.
     """
     #TODO esto es lo más costoso de todo el algoritmo, hay que optimizar
-    return min([(fmed(f(solution, data)), solution) for solution in pop], key=operator.itemgetter(0))
+    return min([(fmed(solution, data), solution) for solution in pop], key=operator.itemgetter(0))
 
 
 def get_n_best_solutions(pop, data, n_top):
-    elite = sorted([(fmed(f(solution, data)), solution) for solution in pop], key=operator.itemgetter(0))[:n_top]
+    elite = sorted([(fmed(solution, data), solution) for solution in pop], key=operator.itemgetter(0))[:n_top]
     return [x[1] for x in elite]
+
+
+def swap_mutation(solution, ratio):
+    solution = solution.copy()
+    if np.random.randint(100) < ratio:
+        swap_indexes = np.random.choice(len(solution), 2, replace=False)
+        solution[swap_indexes[0]], solution[swap_indexes[1]] = solution[swap_indexes[1]], solution[swap_indexes[0]]
+    return solution
 
 
 def mutate(pop, ratio):
@@ -134,10 +145,8 @@ def get_elite_with_rep(pop, data, size):
     return elite
 
 
-def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10, diversify_size=0, not_improving_limit=5,
+def evolutive_algorithm(data, pop, pop_size, time_=60, elite_size=5, mut_ratio=10, diversify_size=0, not_improving_limit=5,
                         sel_f=median_selection, elite_f=get_elite, rep_f=ox_reproduction, mut_f=mutate):
-    # 1. Crear población
-    pop = generate_random_population(len(data), pop_size)
 
     # 2. Bucle de evolución (mientras no se alcance la condición de parada)
 
@@ -145,7 +154,7 @@ def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10, di
     best = np.inf
     while time.time() < t_end:
 
-        pop = evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size,
+        pop, elite = evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size,
                                    sel_f, elite_f, rep_f, mut_f)
         if not_improving_limit:
             current_fmed = get_best_solution(pop, data)[0]
@@ -161,26 +170,42 @@ def evolutive_algorithm(data, pop_size, time_=60, elite_size=5, mut_ratio=10, di
                     diversify_size += int((len(pop)-diversify_size)/10)
                     not_improving = 0
 
-        # print('\r' + str(i + 1) + "/" + str(generations), end='')
-        # print(get_best_solution(pop, data))
+        #print(get_best_solution(pop, data))
 
     # 3. Retornar mejor solución
-    return get_best_solution(pop, data)
+    return elite, pop
 
 
-def diversify(pop, target_size):
+def diversify(pop, div_size):
     """
     Añade población random para evitar mínimos locales.
     """
-    pop.extend(generate_random_population(len(pop[0]), target_size-len(pop)))
+    pop.extend(generate_random_population(len(pop[0]), div_size))
     return pop
+
+
+def parallel_median_selection(population, data):
+    # TODO hacer esto más limpio
+    chunks = [population[:25], population[25:50], population[50:75], population[75:]]
+    p = Pool(processes=len(chunks))
+    selected = []
+    elite = []
+    results = p.map(median_selection, [(chunk, data) for chunk in chunks])
+    p.close()
+    for result in results:
+        selected.extend(result[0])
+        elite.append(result[1])
+    best = min(elite, key=operator.itemgetter(0))[1]
+    return selected, best
 
 
 def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
     #step0 = time.time()
     # 2.1. Selección
-    pop, elite = sel_f(pop, data)
+    # pop, elite = sel_f(pop, data)
 
+    # Selección paralela
+    pop, elite = sel_f(pop, data)
     #step1 = time.time()
 
     # 2.2. Elitismo
@@ -189,22 +214,20 @@ def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_s
     #step2 = time.time()
 
     # 2.2. Reproducción
-    pop = rep_f(pop, pop_size-diversify_size, elite_size)
-
+    pop = rep_f(pop, pop_size-diversify_size, elite_size, mut_ratio)
     #step3 = time.time()
 
     # 2.4. Mutación
-    pop = mut_f(pop, mut_ratio)
+    #pop = mut_f(pop, mut_ratio)
 
     #step4 = time.time()
 
     # 2.5. Diversificación
-    pop = diversify(pop, pop_size)
-
+    #pop = diversify(pop, diversify_size)
     #step5 = time.time()
 
     # 2.5. Combinar élite con el resto
-    pop.append(elite)
+    pop.append(elite[1])
 
     #step6 = time.time()
 
@@ -215,7 +238,7 @@ def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_s
     #      f"%Diversificación: {(step5-step4)/(step6-step0)*100} \t "
     #      f"%Combinar: {(step6-step5)/(step6-step0)*100}")
 
-    return pop
+    return pop, elite
 
 
 def find_best_params(dataset):
@@ -249,3 +272,8 @@ def find_best_params(dataset):
 # Mejoras
 # . Crear clase para una población
 # . Probar cambiando arrays/lists
+# . Optimizar matriz f
+# . Alguna estructura de datos con la que mantener las soluciones con su fmed, y que si ya existen (¿hash?)
+# no volver a calcularlo?
+# . Método de mutación con swaps de posiciones menos distantes
+# . A mitad de la ejecución paralela quedarse con la mejor población y redistribuirla entra todos los nucleos
