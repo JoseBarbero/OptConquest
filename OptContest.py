@@ -4,9 +4,10 @@ from Annealing import *
 from Evolutive import *
 from RandomAlgorithm import *
 
+
 def worker(mutation):
     pop = generate_random_population(75, 100)
-    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop, pop_size=100,
+    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop, pop_size=3,
                           time_=60, elite_size=1, mut_ratio=mutation[1], diversify_size=0, not_improving_limit=False,
                           sel_f=median_selection,
                           elite_f=get_elite,
@@ -65,6 +66,39 @@ def show_results(n_runs, cores, p_e):
     print(f"\tBest: {min(res)}")
 
 
-if __name__ == '__main__':
+def annealing_worker(params):
+    t, alpha, n_neighbours = params[1]
     solution0 = create_random_solution(75)
-    print(simulated_annealing(5000, 1, solution0, 60, 5, read_file("Datasets/Doc11.txt")))
+    return simulated_annealing(t, alpha, solution0, 60, n_neighbours, read_file("Datasets/Doc11.txt"))
+
+# 500. 0.1 10
+
+
+def parallel_annealing(n_processes, t, alpha, n_neighbours):
+    p = Pool(processes=n_processes)
+    params = [t, alpha, n_neighbours]
+    results = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
+    p.close()
+    print(results, file=open("output.txt", "a"))
+    print(np.mean(results), file=open("means.txt", "a"))
+    return min(results)
+
+
+def test_params():
+    t_list = [100, 500, 1000, 5000]
+    alpha_list = [0.1, 0.5, 1, 5, 10]
+    n_neighbours_list = [1, 3, 5, 10, 50]
+
+    for t, alpha, n_neighbours in list(itertools.product(t_list, alpha_list, n_neighbours_list)):
+        print("t, alpha, n_neighbours:", t, alpha, n_neighbours, file=open("output.txt", "a"))
+        print(t, alpha, n_neighbours, file=open("means.txt", "a"))
+        parallel_annealing(4, t, alpha, n_neighbours)
+
+
+if __name__ == '__main__':
+    #parallel_annealing(4, 500, 0.1, 10)
+    test_params()
+
+#Todo Probar si merece la pena empezar con una buena solución de un genético
+#Todo Búsqueda local al final
+#Todo 30 segundos y otros 30 empezando con el mejor (maybe busqueda local por medio)
