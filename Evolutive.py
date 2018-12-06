@@ -8,6 +8,45 @@ from FlowShopUtils import *
 from multiprocessing import Pool, Queue, Process
 
 
+class Population:
+    def __init__(self, solution_size, population_size, problem_data):
+        """
+        Utilizo una biblioteca de fmeds para no tener que volver a calcularlos de nuevo (que es de lo más costoso)
+        """
+        self.fmed_library = dict()
+        self.problem_data = problem_data
+        self.population = self.initialize_population(solution_size, population_size)
+
+    def add_to_library(self, solution):
+        """
+        Añade el fmed de una solución a la biblioteca y lo devuelve (para tenerlo directamente en get_fmed sin buscarlo)
+        """
+        fmed_value = fmed(solution, self.problem_data)
+        self.fmed_library[solution] = fmed_value
+        return fmed_value
+
+    def get_fmed(self, solution):
+        """
+        Saca el fmed de cierta solución de la biblioteca. Si no lo encuentra, lo mete en la biblioteca y lo devuelve.
+        """
+        if solution in self.fmed_library:
+            return self.fmed_library[solution]
+        else:
+            return self.add_to_library(solution)
+
+    def initialize_population(self, sol_size, pop_size):
+        """
+        Inicializa la población de forma aleatoria y calcula los fmeds para la biblioteca.
+        """
+        pop = []
+        for i in range(pop_size):
+            solution = create_random_solution(sol_size)
+            pop.append(solution)
+            _ = self.get_fmed(solution) # Esto es porque devuelve el fmed, es feo pero bueno.
+        return pop
+
+
+
 def generate_random_population(sol_size, pop_size):
     """
     Genera una población de soluciones aleatorias.

@@ -96,7 +96,8 @@ def test_params():
 
 
 if __name__ == '__main__':
-    #parallel_annealing(4, 500, 0.1, 10)
+    parallel_evolutive(4, 100)
+    parallel_annealing(4, 500, 0.1, 10)
     test_params()
 
 #Todo Probar si merece la pena empezar con una buena solución de un genético
