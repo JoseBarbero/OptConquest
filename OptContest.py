@@ -3,59 +3,7 @@ from multiprocessing import Pool
 from Annealing import *
 from Evolutive import *
 from RandomAlgorithm import *
-
-
-def worker(mutation):
-    pop = generate_random_population(75, 100)
-    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop, pop_size=3,
-                          time_=60, elite_size=1, mut_ratio=mutation[1], diversify_size=0, not_improving_limit=False,
-                          sel_f=median_selection,
-                          elite_f=get_elite,
-                          rep_f=ox_reproduction,
-                          mut_f=mutate)[0][0]
-
-
-def worker_2(mutation):
-    pop = generate_random_population(75, 100)
-    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop, pop_size=100,
-                          time_=10, elite_size=1, mut_ratio=mutation[1], diversify_size=0, not_improving_limit=False,
-                          sel_f=median_selection,
-                          elite_f=get_elite,
-                          rep_f=ox_reproduction,
-                          mut_f=mutate)
-
-
-def worker_3(args):
-    _, (mutation, pop) = args
-    # TODO devolver la solución en sí
-    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop, pop_size=100,
-                          time_=50, elite_size=1, mut_ratio=mutation, diversify_size=0, not_improving_limit=False,
-                          sel_f=median_selection,
-                          elite_f=get_elite,
-                          rep_f=ox_reproduction,
-                          mut_f=mutate)[0][0]
-
-
-def parallel_evolutive(n_processes, mutation):
-    p = Pool(processes=n_processes)
-    results = p.map(worker, [(i, mutation) for i in range(n_processes)])
-    p.close()
-    return min(results)
-
-
-def parallel_evolutive_v2(n_processes, mutation):
-    p = Pool(processes=n_processes)
-    results = p.map(worker_2, [(i, mutation) for i in range(n_processes)])
-    p.close()
-
-    best_pop = min(results, key=operator.itemgetter(0))[1]
-
-    p2 = Pool(processes=n_processes)
-    results2 = p2.map(worker_3, [(i, (mutation, best_pop)) for i in range(n_processes)])
-    p2.close()
-
-    return min(results2)
-
+from operator import itemgetter
 
 def show_results(n_runs, cores, p_e):
     res = []
@@ -66,28 +14,49 @@ def show_results(n_runs, cores, p_e):
     print(f"\tBest: {min(res)}")
 
 
-def annealing_worker(params):
-    t, alpha, n_neighbours = params[1]
-    solution0 = create_random_solution(75)
-    return simulated_annealing(t, alpha, solution0, 60, n_neighbours, read_file("Datasets/Doc11.txt"))
+def evolutive_worker(mutation):
+    pop = Population(75, 50, read_file("Datasets/Doc11.txt"))
 
-# 500. 0.1 10
+    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop,
+                          time_=60, elite_size=1, mut_ratio=mutation[1], diversify_size=0, not_improving_limit=False,
+                          sel_f=median_selection,
+                          elite_f=get_elite,
+                          rep_f=ox_reproduction,
+                          mut_f=mutate)[0]
+
+
+def parallel_evolutive(n_processes, mutation):
+    p = Pool(processes=n_processes)
+    results = p.map(evolutive_worker, [(i, mutation) for i in range(n_processes)])
+    p.close()
+    return results
+
+
+def annealing_worker(params):
+    t, alpha, solution0, n_neighbours = params[1]
+    return simulated_annealing(t, alpha, solution0, 60, n_neighbours, read_file("Datasets/Doc11.txt"))
 
 
 def parallel_annealing(n_processes, t, alpha, n_neighbours):
     p = Pool(processes=n_processes)
-    params = [t, alpha, n_neighbours]
-    results = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
+
+    solution0 = create_random_solution(75)
+    params = [t, alpha, solution0, n_neighbours]
+    results_ = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
+
+    solutions, fmeds = zip(*results_)
     p.close()
-    print(results, file=open("output.txt", "a"))
-    print(np.mean(results), file=open("means.txt", "a"))
-    return min(results)
+    idx_best = min(enumerate(fmeds), key=itemgetter(1))[0]
+
+    print(fmeds, "--->", min(fmeds))
+
+    return results_[idx_best]
 
 
 def test_params():
-    t_list = [100, 500, 1000, 5000]
-    alpha_list = [0.1, 0.5, 1, 5, 10]
-    n_neighbours_list = [1, 3, 5, 10, 50]
+    t_list = [100, 200, 250, 350]
+    alpha_list = [0.5, 1, 2, 3, 5]
+    n_neighbours_list = [1, 3, 5, 10]
 
     for t, alpha, n_neighbours in list(itertools.product(t_list, alpha_list, n_neighbours_list)):
         print("t, alpha, n_neighbours:", t, alpha, n_neighbours, file=open("output.txt", "a"))
@@ -96,10 +65,19 @@ def test_params():
 
 
 if __name__ == '__main__':
-    parallel_evolutive(4, 100)
-    parallel_annealing(4, 500, 0.1, 10)
-    test_params()
+    # print(parallel_evolutive(4, 10))
+    results = []
+    for _ in range(5):
+        results.append(parallel_annealing(4, 250, 3, 5)[1])
+    print("Mean fmed:", np.mean(results))
+    print("Best fmed:", np.min(results))
 
+#TODO Parametrizar bien y probar otros métodos para bajar la temperatura
+#Todo Probar con diferentes niveles de mutación
 #Todo Probar si merece la pena empezar con una buena solución de un genético
+#Todo Probar si merece la pena acabar con una buena solución de un genético
 #Todo Búsqueda local al final
 #Todo 30 segundos y otros 30 empezando con el mejor (maybe busqueda local por medio)
+#Todo guardar los últimos 10 fmeds en un diccionario para evitar recalcular lo mismo
+#Todo mutacion loca en un nucleo
+#Todo Igual merece la pena hacer otro algoritmo cuando este se atasque

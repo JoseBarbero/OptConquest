@@ -5,7 +5,6 @@ import pandas as pd
 import random as rnd
 from RandomAlgorithm import *
 from FlowShopUtils import *
-from multiprocessing import Pool, Queue, Process
 
 
 class Population:
@@ -13,77 +12,114 @@ class Population:
         """
         Utilizo una biblioteca de fmeds para no tener que volver a calcularlos de nuevo (que es de lo más costoso)
         """
-        self.fmed_library = dict()
+        self.len = population_size
+        self.fmed_library = {}
+        self.best_solution = None
+        self.best_fmed = np.inf
+        self.fmed_sum = 0
         self.problem_data = problem_data
-        self.population = self.initialize_population(solution_size, population_size)
+        # Separo en dos listas porque para varios cálculos tendría que separar los fmeds (los idx son los mismos)
+        self.population, self.population_fmeds = self.initialize_population(solution_size, population_size)
 
     def add_to_library(self, solution):
         """
         Añade el fmed de una solución a la biblioteca y lo devuelve (para tenerlo directamente en get_fmed sin buscarlo)
         """
         fmed_value = fmed(solution, self.problem_data)
-        self.fmed_library[solution] = fmed_value
+        if fmed_value < self.best_fmed:
+            self.best_fmed = fmed_value
+            self.best_solution = solution
+        # Uso .toBytes porque no se puede usar un array como key de diccionario
+        # (se podría usar str() pero no sé cómo es de eficiente)
+        self.fmed_library[solution.tobytes()] = fmed_value
         return fmed_value
 
     def get_fmed(self, solution):
         """
         Saca el fmed de cierta solución de la biblioteca. Si no lo encuentra, lo mete en la biblioteca y lo devuelve.
         """
-        if solution in self.fmed_library:
-            return self.fmed_library[solution]
-        else:
-            return self.add_to_library(solution)
+        #return self.fmed_library.get(solution.tobytes(), self.add_to_library(solution))
+        return fmed(solution, self.problem_data)
 
     def initialize_population(self, sol_size, pop_size):
         """
         Inicializa la población de forma aleatoria y calcula los fmeds para la biblioteca.
         """
-        pop = []
-        for i in range(pop_size):
+        population = []
+        population_fmeds = []
+        for _ in range(pop_size):
             solution = create_random_solution(sol_size)
-            pop.append(solution)
-            _ = self.get_fmed(solution) # Esto es porque devuelve el fmed, es feo pero bueno.
-        return pop
+            current_fmed = self.get_fmed(solution)
+            population.append(solution)
+            population_fmeds.append(current_fmed)
+            self.fmed_sum += current_fmed
+            if current_fmed < self.best_fmed:
+                self.best_fmed = current_fmed
+                self.best_solution = solution
+        return population, population_fmeds
+
+    def get_mean(self):
+        return self.fmed_sum / self.size
+
+    def get_median(self):
+        # Todo Buscar manera de hacer esto más eficiente manteniendo siempre la mediana sin tener que recalcular
+        return np.median(self.population_fmeds)
+
+    def clear_population(self):
+        self.population = []
+        self.population_fmeds = []
+        self.size = 0
+        self.best_solution = None
+        self.best_fmed = np.inf
+        self.fmed_sum = 0
+
+    def replace_full_population(self, new_pop, new_pop_fmeds, new_size, new_best_solution, new_best_fmed, new_fmed_sum):
+        self.population = new_pop
+        self.population_fmeds = new_pop_fmeds
+        self.size = new_size
+        self.best_solution = new_best_solution
+        self.best_fmed = new_best_fmed
+        self.fmed_sum = new_fmed_sum
+
+    def replace_population(self, new_pop):
+        self.clear_population()
+        self.population = new_pop
+        for solution in new_pop:
+            current_fmed = self.get_fmed(solution)
+            self.population_fmeds.append(current_fmed)
+            self.fmed_sum += current_fmed
+            if current_fmed < self.best_fmed:
+                self.best_fmed = current_fmed
+                self.best_solution = solution
 
 
-
-def generate_random_population(sol_size, pop_size):
-    """
-    Genera una población de soluciones aleatorias.
-    """
-    return [create_random_solution(sol_size) for _ in range(pop_size)]
-
-
-def median_selection(population, data):
+def median_selection(population):
     """
     Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
     """
-    pop_fmed = [fmed(solution, data) for solution in population]
-    median_fmed = np.median(pop_fmed)
-    pop = []
-    best_fmed = np.inf  # TODO permitir más de uno en la élite
-    for solution, solution_fmed in zip(population, pop_fmed):
+    pop_fmed = population.population_fmeds
+    median_fmed = population.get_median()
+
+    new_pop = []
+    new_pop_fmeds = []
+    new_fmed_sum = 0
+
+    for solution, solution_fmed in zip(population.population, pop_fmed):
         if solution_fmed <= median_fmed:
-            pop.append(solution)
-            if solution_fmed <= best_fmed:
-                best_fmed = solution_fmed
-                best_solution = solution
-    return pop, (best_fmed, best_solution)
+            new_pop.append(solution)
+            new_pop_fmeds.append(solution_fmed)
+            new_fmed_sum += solution_fmed
+
+    population.replace_full_population(new_pop, new_pop_fmeds, len(new_pop),
+                                       population.best_solution, population.best_fmed, new_fmed_sum)
+    return population
 
 
-def old_median_selection(population, data):
-    """
-    Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
-    """
-    pop_fmed = [fmed(solution, data) for solution in population]
-    pop = [sol for sol, f_med in zip(population, pop_fmed) if f_med <= np.median(pop_fmed)]
-    return pop
-
-
-def tournament_selection(population, data, wanted_size=30, p=2):
+def tournament_selection(population, wanted_size=30, p=2):
     """
     Selección por torneo determinista.
     """
+    # Todo cambiar al nuevo sistema de población
     pop = []
     best_fmed = np.inf
     for _ in range(wanted_size):
@@ -95,10 +131,12 @@ def tournament_selection(population, data, wanted_size=30, p=2):
 
 
 def random_selection(population, _, wanted_size=50):
+    # Todo cambiar al nuevo sistema de población
     return rnd.sample(population, wanted_size)
 
 
 def basic_reproduction(population, pop_size):
+    # Todo cambiar al nuevo sistema de población
     test = [population[i] for i in np.random.choice(len(population), pop_size - len(population))]
     population.extend(test)
     return population
@@ -108,11 +146,11 @@ def ox_reproduction(population, target_len, elite_size, mut_prob):
     """
     Genera una nueva población con hijos de los seleccionados
     """
-    pop_len = len(population)
+    pop_len = population.size
     new_pop = []
     for i in range(elite_size, target_len):
         indexes = np.random.choice(pop_len, 2)
-        son = cruce_pseudo_ox(population[indexes[0]], population[indexes[1]])
+        son = cruce_pseudo_ox(population.population[indexes[0]], population.population[indexes[1]])
 
         # Se muta aquí para evitar otro bucle en la mutación
         new_pop.append(swap_mutation(son, mut_prob))
@@ -120,6 +158,7 @@ def ox_reproduction(population, target_len, elite_size, mut_prob):
 
 
 def cruce_pseudo_ox(parent1, parent2):
+    # Todo cambiar al nuevo sistema de población
     # Cojo dos índices aleatorios entre los cuales se va a mantener el contenido del parent1
     index_ini, index_fin = sorted(np.random.choice(range(len(parent1)), 2, replace=False))
     p1_aux = parent1[index_ini:index_fin]
@@ -134,20 +173,24 @@ def get_best_solution(pop, data):
     """
     Obtiene la mejor solución de una población.
     """
+    # Todo cambiar al nuevo sistema de población
     #TODO esto es lo más costoso de todo el algoritmo, hay que optimizar
     return min([(fmed(solution, data), solution) for solution in pop], key=operator.itemgetter(0))
 
 
 def get_n_best_solutions(pop, data, n_top):
+    # Todo cambiar al nuevo sistema de población
     elite = sorted([(fmed(solution, data), solution) for solution in pop], key=operator.itemgetter(0))[:n_top]
     return [x[1] for x in elite]
 
 
-def swap_mutation(solution, ratio):
+def swap_mutation(solution, ratio, number_of_swaps=1):
+    # Todo cambiar al nuevo sistema de población
     solution = solution.copy()
-    if np.random.randint(100) < ratio:
-        swap_indexes = np.random.choice(len(solution), 2, replace=False)
-        solution[swap_indexes[0]], solution[swap_indexes[1]] = solution[swap_indexes[1]], solution[swap_indexes[0]]
+    for _ in range(number_of_swaps):
+        if np.random.randint(100) < ratio:
+            swap_indexes = np.random.choice(len(solution), 2, replace=False)
+            solution[swap_indexes[0]], solution[swap_indexes[1]] = solution[swap_indexes[1]], solution[swap_indexes[0]]
     return solution
 
 
@@ -155,6 +198,7 @@ def mutate(pop, ratio):
     """
     Produce intercambios entre dos posiciones aleatorias de cada solución.
     """
+    # Todo cambiar al nuevo sistema de población
     #TODO mutar dentro del cruce para evitar otro bucle
     #TODO otros métodos de mutación
     for i in range(len(pop)):
@@ -166,7 +210,7 @@ def mutate(pop, ratio):
 
 def get_elite(pop, data, size):
     if size == 1:  # Más eficiente que ordenar toda la población
-        return [get_best_solution(pop, data)[1]]
+        return pop.best_solution
     elif size > 1:
         return get_n_best_solutions(pop, data, size)
     else:
@@ -177,6 +221,7 @@ def get_elite_with_rep(pop, data, size):
     """
     Seleccionamos la élite y la reproducimos para tener asegurados hijos de la élite en la siguiente.
     """
+    # Todo cambiar al nuevo sistema de población
     elite = get_elite(pop, data, size)
     if size < 2:
         elite.extend(elite)
@@ -184,19 +229,19 @@ def get_elite_with_rep(pop, data, size):
     return elite
 
 
-def evolutive_algorithm(data, pop, pop_size, time_=60, elite_size=5, mut_ratio=10, diversify_size=0, not_improving_limit=5,
+def evolutive_algorithm(data, pop, time_=60, elite_size=5, mut_ratio=10, diversify_size=0, not_improving_limit=5,
                         sel_f=median_selection, elite_f=get_elite, rep_f=ox_reproduction, mut_f=mutate):
 
     # 2. Bucle de evolución (mientras no se alcance la condición de parada)
 
     t_end = time.time() + time_ - 0.5
-    best = np.inf
+    #best = np.inf
     while time.time() < t_end:
-
-        pop, elite = evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size,
+        pop, elite = evolutive_generation(pop, elite_size, mut_ratio, diversify_size,
                                    sel_f, elite_f, rep_f, mut_f)
+        """
         if not_improving_limit:
-            current_fmed = get_best_solution(pop, data)[0]
+            current_fmed = pop.best_fmed
             if current_fmed < best:
                 best = current_fmed
                 not_improving = 0
@@ -210,9 +255,54 @@ def evolutive_algorithm(data, pop, pop_size, time_=60, elite_size=5, mut_ratio=1
                     not_improving = 0
 
         #print(get_best_solution(pop, data))
+        """
 
     # 3. Retornar mejor solución
     return elite, pop
+
+
+def evolutive_generation(pop, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
+    # Elitismo
+    elite = pop.best_solution
+
+    #Selección
+    pop = sel_f(pop)
+
+    #step1 = time.time()
+
+    # 2.2. Elitismo
+    # elite = elite_f(pop, data, elite_size)
+
+    #step2 = time.time()
+
+    # 2.2. Reproducción
+    new_solutions = rep_f(pop, pop.len-diversify_size, elite_size, mut_ratio)
+    #step3 = time.time()
+
+    # 2.4. Mutación
+    #pop = mut_f(pop, mut_ratio)
+
+    #step4 = time.time()
+
+    # 2.5. Diversificación
+    #pop = diversify(pop, diversify_size)
+    #step5 = time.time()
+
+    # 2.5. Combinar élite con el resto
+    new_solutions.append(elite)
+
+    pop.replace_population(new_solutions)
+
+    #step6 = time.time()
+
+    #print(f"%Selección: {(step1-step0)/(step6-step0)*100} \t "
+    #      f"%Elitismo: {(step2-step1)/(step6-step0)*100} \t "
+    #      f"%Reproducción: {(step3-step2)/(step6-step0)*100} \t "
+    #      f"%Mutación: {(step4-step3)/(step6-step0)*100} \t "
+    #      f"%Diversificación: {(step5-step4)/(step6-step0)*100} \t "
+    #      f"%Combinar: {(step6-step5)/(step6-step0)*100}")
+    print(pop.best_fmed, file=open("evolutive_fmeds.txt", "a"))
+    return pop, (elite, pop.best_fmed)
 
 
 def diversify(pop, div_size):
@@ -236,48 +326,6 @@ def parallel_median_selection(population, data):
         elite.append(result[1])
     best = min(elite, key=operator.itemgetter(0))[1]
     return selected, best
-
-
-def evolutive_generation(data, pop, pop_size, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
-    #step0 = time.time()
-    # 2.1. Selección
-    # pop, elite = sel_f(pop, data)
-
-    # Selección paralela
-    pop, elite = sel_f(pop, data)
-    #step1 = time.time()
-
-    # 2.2. Elitismo
-    # elite = elite_f(pop, data, elite_size)
-
-    #step2 = time.time()
-
-    # 2.2. Reproducción
-    pop = rep_f(pop, pop_size-diversify_size, elite_size, mut_ratio)
-    #step3 = time.time()
-
-    # 2.4. Mutación
-    #pop = mut_f(pop, mut_ratio)
-
-    #step4 = time.time()
-
-    # 2.5. Diversificación
-    #pop = diversify(pop, diversify_size)
-    #step5 = time.time()
-
-    # 2.5. Combinar élite con el resto
-    pop.append(elite[1])
-
-    #step6 = time.time()
-
-    #print(f"%Selección: {(step1-step0)/(step6-step0)*100} \t "
-    #      f"%Elitismo: {(step2-step1)/(step6-step0)*100} \t "
-    #      f"%Reproducción: {(step3-step2)/(step6-step0)*100} \t "
-    #      f"%Mutación: {(step4-step3)/(step6-step0)*100} \t "
-    #      f"%Diversificación: {(step5-step4)/(step6-step0)*100} \t "
-    #      f"%Combinar: {(step6-step5)/(step6-step0)*100}")
-
-    return pop, elite
 
 
 def find_best_params(dataset):
@@ -308,11 +356,5 @@ def find_best_params(dataset):
     print("Best params:", best_params)
     return best_params
 
-# Mejoras
-# . Crear clase para una población
-# . Probar cambiando arrays/lists
-# . Optimizar matriz f
-# . Alguna estructura de datos con la que mantener las soluciones con su fmed, y que si ya existen (¿hash?)
-# no volver a calcularlo?
-# . Método de mutación con swaps de posiciones menos distantes
-# . A mitad de la ejecución paralela quedarse con la mejor población y redistribuirla entra todos los nucleos
+# Todo buscar el mejor tamaño de la población
+# Todo Aumentar el tamaño de la población a medida que pasan las iteraciones
