@@ -42,4 +42,3 @@ def simulated_annealing(ini_t, alpha, solution, time_, n_neighbours, data):
         if t - step > 0.1:
             t -= step
     return solution, solution_fmed
-
