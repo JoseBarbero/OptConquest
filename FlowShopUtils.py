@@ -41,7 +41,7 @@ def fmed(solution, data):
 
     # No se sigue el orden inicial de la matriz para evitar complicaciones de indexado,
     # las filas van en el orden de la solución respecto a la matriz inicial
-    sum_last_column = 0
+    sum_last_column = cost_matrix[0, -1]
     n_rows = len(solution)
     n_cols = len(data[0])
     for i in range(1, n_rows):
@@ -49,6 +49,7 @@ def fmed(solution, data):
             cost_matrix[i][j] = max(cost_matrix[i - 1][j], cost_matrix[i][j - 1]) + data[solution[i]][j]
             if j == n_cols-1:
                 sum_last_column += cost_matrix[i][j]
+
     return sum_last_column/n_rows
 
 
@@ -90,6 +91,25 @@ def evaluate_algorithm(algorithm, params):
     return sum(results)/len(results), min(results)
 
 
+def reorder(cost_matrix, sol):
+    """
+    Reordena una matriz de costes (f) para comparar mi solución con las de los casos de prueba.
+    """
+    ordered_mat = np.zeros_like(cost_matrix)
+    i = 0
+    for step in sol:
+        ordered_mat[step] = cost_matrix[i]
+        i += 1
+    return ordered_mat
 
 
+def generate_neighbours(solution):
+    """
+    Generador de vecinos.
+    """
+    size_ = len(solution)
 
+    for i in range(size_):
+        for j in range(i+1, size_):
+            solution[i], solution[j] = solution[j], solution[i]
+            yield solution

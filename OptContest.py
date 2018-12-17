@@ -34,15 +34,15 @@ def parallel_evolutive(n_processes, mutation):
 
 
 def annealing_worker(params):
-    t, alpha, solution0, n_neighbours, time_ = params[1]
-    return simulated_annealing(t, alpha, solution0, time_, n_neighbours, read_file("Datasets/Doc11.txt"))
+    tries, alpha, solution0, n_neighbours, time_ = params[1]
+    return simulated_annealing(tries, alpha, solution0, time_, n_neighbours, read_file("Datasets/Doc11.txt"))
 
 
-def parallel_annealing(n_processes, t, alpha, n_neighbours, time_):
+def parallel_annealing(n_processes, tries, alpha, n_neighbours, time_):
     p = Pool(processes=n_processes)
 
     solution0 = create_random_solution(75)
-    params = [t, alpha, solution0, n_neighbours, time_]
+    params = [tries, alpha, solution0, n_neighbours, time_]
     results_ = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
 
     solutions, fmeds = zip(*results_)
@@ -69,17 +69,14 @@ if __name__ == '__main__':
     # print(parallel_evolutive(4, 10))
     results = []
     for _ in range(1):
-        results.append(parallel_annealing(4, 250, 3, 5, 50)[1])
-    print("Mean fmed:", np.mean(results))
-    print("Best fmed:", np.min(results))
+        time_ini = time.time()
+        annealing_results = parallel_annealing(2, 5, 5, 5, 50)
+        results.append(local_best_first_search(*annealing_results, read_file("Datasets/Doc11.txt"), 10))
+        time_fin = time.time()
+        print(results)
+        print(time_fin-time_ini)
 
-#TODO Crear generador de vecinos
+    #print("Mean fmed:", np.mean(results))
+    #print("Best fmed:", np.min(results))
+
 #TODO Parametrizar bien y probar otros métodos para bajar la temperatura
-#Todo Probar con diferentes niveles de mutación
-#Todo Probar si merece la pena empezar con una buena solución de un genético
-#Todo Probar si merece la pena acabar con una buena solución de un genético
-#Todo Búsqueda local al final
-#Todo 30 segundos y otros 30 empezando con el mejor (maybe busqueda local por medio)
-#Todo guardar los últimos 10 fmeds en un diccionario para evitar recalcular lo mismo
-#Todo mutacion loca en un nucleo
-#Todo Igual merece la pena hacer otro algoritmo cuando este se atasque
