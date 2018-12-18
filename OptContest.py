@@ -80,13 +80,8 @@ if __name__ == '__main__':
     for _ in range(5):
         #time_ini = time.time()
         solution0 = create_random_solution(75)
-        solution1, solution1_fmed = parallel_annealing(3, 5, 0.9, 20, 3, 60, solution0)
-        solution2, solution2_fmed = parallel_annealing(3, 1, 0.01, 50, 1, 0, solution1)
-        if solution1_fmed < solution2_fmed:
-            results.append(solution1_fmed)
-        else:
-            results.append(solution2_fmed)
-        print(solution1_fmed, solution2_fmed)
+        solution, solution_fmed = parallel_annealing(3, 5, 0.9, 20, 3, 60, solution0)
+        results.append(solution_fmed)
         #time_fin = time.time()
         #print(time_fin-time_ini)
     print(results)
