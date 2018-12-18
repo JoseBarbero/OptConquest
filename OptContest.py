@@ -73,8 +73,6 @@ def test_params():
 
 if __name__ == '__main__':
 
-
-
     results = []
 
     for _ in range(5):
