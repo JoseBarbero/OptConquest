@@ -37,12 +37,12 @@ def accept(ini_solution, ini_solution_fmed, new_solution, t, data):
         return ini_solution, pre
 
 
-def simulated_annealing(tries, alpha, solution, time_, n_neighbours, data):
+def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, n_neighbours, data):
 
     # Bucle de 60 segundos
     t_end = time.time() + time_ - 0.1
     solution_fmed = fmed(solution, data)
-    t = solution_fmed * 0.4
+    t = solution_fmed * t_ini_factor
 
     while time.time() < t_end:
         for i in range(tries):
@@ -89,4 +89,4 @@ def local_best_first_search(solution, solution_fmed, data, time_limit):
                 best_solution, best_fmed = neighbour, neighbour_fmed
         if target_fmed == best_fmed:
             break
-    return solution, solution_fmed
+    return best_solution, best_fmed
