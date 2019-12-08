@@ -5,10 +5,11 @@ import pandas as pd
 import random as rnd
 from RandomAlgorithm import *
 from FlowShopUtils import *
+from multiprocessing import Pool
 
 
 class Population:
-    def __init__(self, solution_size, population_size, problem_data):
+    def __init__(self, solution_size, population_size, problem_data, ini_sol=False):
         """
         Utilizo una biblioteca de fmeds para no tener que volver a calcularlos de nuevo (que es de lo más costoso)
         """
@@ -19,7 +20,7 @@ class Population:
         self.fmed_sum = 0
         self.problem_data = problem_data
         # Separo en dos listas porque para varios cálculos tendría que separar los fmeds (los idx son los mismos)
-        self.population, self.population_fmeds = self.initialize_population(solution_size, population_size)
+        self.population, self.population_fmeds = self.initialize_population(solution_size, population_size, ini_sol)
 
     def add_to_library(self, solution):
         """
@@ -41,12 +42,15 @@ class Population:
         #return self.fmed_library.get(solution.tobytes(), self.add_to_library(solution))
         return fmed(solution, self.problem_data)
 
-    def initialize_population(self, sol_size, pop_size):
+    def initialize_population(self, sol_size, pop_size, ini_sol=False):
         """
         Inicializa la población de forma aleatoria y calcula los fmeds para la biblioteca.
         """
         population = []
         population_fmeds = []
+        if ini_sol:
+            population.append(ini_sol[0])
+            population_fmeds.append(ini_sol[1])
         for _ in range(pop_size):
             solution = create_random_solution(sol_size)
             current_fmed = self.get_fmed(solution)
@@ -93,6 +97,10 @@ class Population:
                 self.best_solution = solution
 
 
+def generate_random_population(sol_size, pop_size):
+    return [create_random_solution(sol_size) for _ in range(pop_size)]
+
+
 def median_selection(population):
     """
     Nos quedamos con los que son mejores que la mediana*alpha de los fmed de toda la población.
@@ -115,7 +123,7 @@ def median_selection(population):
     return population
 
 
-def tournament_selection(population, wanted_size=30, p=2):
+def tournament_selection(population, data, wanted_size=30, p=2, ):
     """
     Selección por torneo determinista.
     """
@@ -258,7 +266,7 @@ def evolutive_algorithm(data, pop, time_=60, elite_size=5, mut_ratio=10, diversi
         """
 
     # 3. Retornar mejor solución
-    return elite, pop
+    return elite
 
 
 def evolutive_generation(pop, elite_size, mut_ratio, diversify_size, sel_f, elite_f, rep_f, mut_f):
@@ -305,12 +313,12 @@ def evolutive_generation(pop, elite_size, mut_ratio, diversify_size, sel_f, elit
     return pop, (elite, pop.best_fmed)
 
 
-def diversify(pop, div_size):
-    """
-    Añade población random para evitar mínimos locales.
-    """
-    pop.extend(generate_random_population(len(pop[0]), div_size))
-    return pop
+#def diversify(pop, div_size):
+#    """
+#    Añade población random para evitar mínimos locales.
+#    """
+#    pop.extend(generate_random_population(len(pop[0]), div_size))
+#    return pop
 
 
 def parallel_median_selection(population, data):

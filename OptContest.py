@@ -1,5 +1,4 @@
-import time
-from multiprocessing import Pool
+import sys
 from Annealing import *
 from Evolutive import *
 from RandomAlgorithm import *
@@ -15,41 +14,43 @@ def show_results(n_runs, cores, p_e):
     print(f"\tBest: {min(res)}")
 
 
-def evolutive_worker(mutation):
-    pop = Population(75, 50, read_file("Datasets/Doc11.txt"))
-
-    return evolutive_algorithm(read_file("Datasets/Doc11.txt"), pop,
-                          time_=60, elite_size=1, mut_ratio=mutation[1], diversify_size=0, not_improving_limit=False,
+def evolutive_worker(params):
+    mutation, ini_sol, time_, data_ = params[1]
+    pop_ = Population(len(ini_sol[0]), 50, data_, ini_sol)
+    return evolutive_algorithm(data_, pop_,
+                          time_=time_, elite_size=1, mut_ratio=mutation, diversify_size=0, not_improving_limit=False,
                           sel_f=median_selection,
                           elite_f=get_elite,
                           rep_f=ox_reproduction,
-                          mut_f=mutate)[0]
+                          mut_f=mutate)
 
 
-def parallel_evolutive(n_processes, mutation):
+def parallel_evolutive(n_processes, mutation, ini_sol, time_, data_):
     p = Pool(processes=n_processes)
-    results_ = p.map(evolutive_worker, [(i, mutation) for i in range(n_processes)])
-    p.close()
-    return results_
-
-
-def annealing_worker(params):
-    tries, t_ini_factor, alpha, solution0, n_neighbours, time_ = params[1]
-    return simulated_annealing(tries, t_ini_factor, alpha, solution0, time_, n_neighbours, read_file("Datasets/Doc11.txt"))
-
-
-def parallel_annealing(n_processes, tries, t_ini_factor, alpha, n_neighbours, time_, solution0):
-    p = Pool(processes=n_processes)
-
-
-    params = [tries, t_ini_factor, alpha, solution0, n_neighbours, time_]
-    results_ = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
+    params = mutation, ini_sol, time_, data_
+    results_ = p.map(evolutive_worker, [(i, params) for i in range(n_processes)])
 
     solutions, fmeds = zip(*results_)
     p.close()
     idx_best = min(enumerate(fmeds), key=itemgetter(1))[0]
 
-    #print(fmeds, "--->", min(fmeds))
+    return results_[idx_best]
+
+
+def annealing_worker(params):
+    tries, t_ini_factor, alpha, solution0, time_, data_ = params[1]
+    return simulated_annealing(tries, t_ini_factor, alpha, solution0, time_, data_)
+
+
+def parallel_annealing(n_processes, tries, t_ini_factor, alpha, time_, solution0, data_):
+    p = Pool(processes=n_processes)
+
+    params = [tries, t_ini_factor, alpha, solution0, time_, data_]
+    results_ = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
+
+    solutions, fmeds = zip(*results_)
+    p.close()
+    idx_best = min(enumerate(fmeds), key=itemgetter(1))[0]
 
     return results_[idx_best]
 
@@ -72,18 +73,15 @@ def test_params():
 
 
 if __name__ == '__main__':
+    time_ini = time.time()
+    file_path = sys.argv[1]
+    data = read_file(file_path)
 
-    results = []
+    solution0 = create_random_solution(len(data))
+    solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 59, solution0, data)
 
-    for _ in range(5):
-        #time_ini = time.time()
-        solution0 = create_random_solution(75)
-        solution, solution_fmed = parallel_annealing(3, 5, 0.9, 20, 3, 60, solution0)
-        results.append(solution_fmed)
-        #time_fin = time.time()
-        #print(time_fin-time_ini)
-    print(results)
-    print("Mean fmed:", np.mean(results))
-    print("Best fmed:", np.min(results))
+    time_fin = time.time()
 
-#Todo añadir en el recocido la condición para que se mantenga el mejor
+    print("Best fmed:", solution_fmed)
+    print("Execution time:", time_fin-time_ini)
+    print("Best solution:", solution)

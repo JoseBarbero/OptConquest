@@ -1,8 +1,9 @@
+import copy
 from Evolutive import *
 
 
 def get_neighbour(solution):
-    sol = solution.copy()
+    sol = copy.deepcopy(solution)
     swap_indexes = np.random.choice(len(sol), 2, replace=False)
     sol[swap_indexes[0]], sol[swap_indexes[1]] = solution[swap_indexes[1]], solution[swap_indexes[0]]
     return sol
@@ -37,7 +38,7 @@ def accept(ini_solution, ini_solution_fmed, new_solution, t, data):
         return ini_solution, pre
 
 
-def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, n_neighbours, data):
+def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, data):
 
     # Bucle de 60 segundos
     t_end = time.time() + time_ - 0.1
@@ -46,12 +47,14 @@ def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, n_neighbour
 
     while time.time() < t_end:
         for i in range(tries):
-            solution, solution_fmed = select_neighbours(n_neighbours, solution, solution_fmed, t, data)
+            vecino = get_neighbour(solution)
+            solution, solution_fmed = accept(solution, solution_fmed, vecino, t, data)
 
-        step = t*alpha/100 # Baja la temperatura un alpha%
+        step = t*alpha/100  # Baja la temperatura un alpha%
 
         if t - step > 0.1:
             t -= step
+
     return solution, solution_fmed
 
 
