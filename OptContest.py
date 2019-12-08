@@ -78,7 +78,7 @@ if __name__ == '__main__':
     data = read_file(file_path)
 
     solution0 = create_random_solution(len(data))
-    solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 59, solution0, data)
+    solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 60, solution0, data)
 
     time_fin = time.time()
 

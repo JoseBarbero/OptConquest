@@ -46,7 +46,7 @@ def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, data):
     t = solution_fmed * t_ini_factor
 
     while time.time() < t_end:
-        for i in range(tries):
+        for i in range(tries): # Tries before getting t down
             vecino = get_neighbour(solution)
             solution, solution_fmed = accept(solution, solution_fmed, vecino, t, data)
 
