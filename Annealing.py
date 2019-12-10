@@ -1,4 +1,5 @@
 import copy
+from cythonfmed import opt_fmed
 from Evolutive import *
 
 
@@ -23,7 +24,7 @@ def select_neighbours(n, solution, solution_fmed, t, data):
 
 def accept(ini_solution, ini_solution_fmed, new_solution, t, data):
     pre = ini_solution_fmed
-    post = fmed(new_solution, data)
+    post = opt_fmed(new_solution, data)
 
     p = np.exp((-(post - pre) / t))
 
@@ -42,7 +43,7 @@ def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, data):
 
     # Bucle de 60 segundos
     t_end = time.time() + time_ - 0.1
-    solution_fmed = fmed(solution, data)
+    solution_fmed = opt_fmed(solution, data)
     t = solution_fmed * t_ini_factor
 
     while time.time() < t_end:
