@@ -55,7 +55,6 @@ def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, data):
 
         if t - step > 0.1:
             t -= step
-
     return solution, solution_fmed
 
 
@@ -66,9 +65,10 @@ def local_best_search(solution, solution_fmed, data, time_limit):
     best_fmed = solution_fmed
     best_solution = solution
     t_end = time.time() + time_limit
+    
     for neighbour in generate_neighbours(solution):
         if time.time() < t_end:
-            neighbour_fmed = fmed(neighbour, data)
+            neighbour_fmed = opt_fmed(neighbour, data)
             if neighbour_fmed < best_fmed:
                 best_solution, best_fmed = neighbour, neighbour_fmed
         else:
@@ -88,7 +88,7 @@ def local_best_first_search(solution, solution_fmed, data, time_limit):
     while time.time() < t_end:
         target_fmed = best_fmed
         for neighbour in generate_neighbours(best_solution):
-            neighbour_fmed = fmed(neighbour, data)
+            neighbour_fmed = opt_fmed(neighbour, data)
             if neighbour_fmed < best_fmed:
                 best_solution, best_fmed = neighbour, neighbour_fmed
         if target_fmed == best_fmed:

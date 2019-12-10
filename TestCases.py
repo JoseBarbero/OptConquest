@@ -23,8 +23,8 @@ sol_doc2_vec = np.loadtxt("Tests/SolDoc2_Vec.txt", usecols=range(13), dtype=int)
 sol_doc1_vec = [a-1 for a in sol_doc1_vec]
 sol_doc2_vec = [a-1 for a in sol_doc2_vec]
 
-doc1 = read_file("ProblemasFlowShopPermutacional/Doc1.txt")
-doc2 = read_file("ProblemasFlowShopPermutacional/Doc2.txt")
+doc1 = read_file("Datasets/Doc1.txt")
+doc2 = read_file("Datasets/Doc2.txt")
 
 print(reorder(f(sol_doc1_vec, doc1), sol_doc1_vec) == sol_doc1_mat)
 print(reorder(f(sol_doc2_vec, doc2), sol_doc2_vec) == sol_doc2_mat)

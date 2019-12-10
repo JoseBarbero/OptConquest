@@ -37,18 +37,27 @@ def parallel_evolutive(n_processes, mutation, ini_sol, time_, data_):
     return results_[idx_best]
 
 
+# def annealing_worker(params):
+#     tries, t_ini_factor, alpha, initial_solution, time_, data_ = params
+#     return simulated_annealing(tries, t_ini_factor, alpha, initial_solution, time_, data_)
+
 def annealing_worker(params):
-    tries, t_ini_factor, alpha, solution0, time_, data_ = params[1]
-    return simulated_annealing(tries, t_ini_factor, alpha, solution0, time_, data_)
+    tries, t_ini_factor, alpha, initial_solution, time_, data_ = params
+    solution, solution_fmed = simulated_annealing(tries, t_ini_factor, alpha, initial_solution, time_, data_)
+    return local_best_search(solution, solution_fmed, data, 6) # El último parámetro es el tiempo de búsqueda local a pelo (sorry)
 
 
-def parallel_annealing(n_processes, tries, t_ini_factor, alpha, time_, solution0, data_):
+def parallel_annealing(n_processes, tries, t_ini_factor, alpha, time_, data_):
     p = Pool(processes=n_processes)
 
-    params = [tries, t_ini_factor, alpha, solution0, time_, data_]
-    results_ = p.map(annealing_worker, [(i, params) for i in range(n_processes)])
+    params = []
+    for process in range(n_processes):
+        params.append([tries, t_ini_factor, alpha, create_random_solution(len(data_)), time_, data_])
+
+    results_ = p.map(annealing_worker, params)
 
     solutions, fmeds = zip(*results_)
+    print(fmeds)
     p.close()
     idx_best = min(enumerate(fmeds), key=itemgetter(1))[0]
 
@@ -77,8 +86,7 @@ if __name__ == '__main__':
     file_path = sys.argv[1]
     data = read_file(file_path)
 
-    solution0 = create_random_solution(len(data))
-    solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 60, solution0, data)
+    solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 54, data)
 
     time_fin = time.time()
 

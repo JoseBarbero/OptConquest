@@ -1,0 +1,1 @@
+t_factor, alpha, n_neighbours, n_tries, times_, search_method:  0.1 1 3 5 (60, 0) <function local_best_search at 0x7f0a072133a0>

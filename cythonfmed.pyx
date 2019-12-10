@@ -2,9 +2,9 @@ import numpy as np
 cimport numpy as np
 cimport cpython
 
-def opt_fmed(solution, data):
+cpdef opt_fmed(solution, data):
 
-    cdef np.ndarray c_cost_matrix = np.zeros([len(data), len(data[0]), dtype=np.double])
+    cdef np.ndarray c_cost_matrix = np.zeros([len(data), len(data[0])])
     c_cost_matrix[0] = np.add.accumulate(data[solution[0]])
 
     sum_last_column = c_cost_matrix[0, -1]
