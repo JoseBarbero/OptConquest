@@ -57,7 +57,10 @@ def parallel_annealing(n_processes, tries, t_ini_factor, alpha, time_, data_):
     results_ = p.map(annealing_worker, params)
 
     solutions, fmeds = zip(*results_)
-    print(fmeds)
+    print(fmeds, file=open("output.txt", "a"))
+    print(np.mean(fmeds), file=open("output.txt", "a"))
+    print(tries, t_ini_factor, alpha, file=open("output.txt", "a"))
+    print("", file=open("output.txt", "a"))
     p.close()
     idx_best = min(enumerate(fmeds), key=itemgetter(1))[0]
 
@@ -81,15 +84,32 @@ def test_params():
         print("", file=open("output.txt", "a"))
 
 
+# if __name__ == '__main__':
+#     time_ini = time.time()
+#     file_path = sys.argv[1]
+#     data = read_file(file_path)
+
+#     solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 54, data)
+
+#     time_fin = time.time()
+
+#     print("Best fmed:", solution_fmed)
+#     print("Execution time:", time_fin-time_ini)
+#     print("Best solution:", solution)
+
 if __name__ == '__main__':
     time_ini = time.time()
     file_path = sys.argv[1]
     data = read_file(file_path)
+    
+    tries_list = [1, 5, 10, 15, 20]
+    t_ini_list = [0.1, 0.2, 0.5, 1, 5, 10]
+    alpha_list = [0.1, 0.5, 1, 5, 10]
 
-    solution, solution_fmed = parallel_annealing(4, 10, 0.6, 5, 54, data)
+    for tries in tries_list:
+        for t_ini in t_ini_list:
+            for alpha in alpha_list:
+                params = [4, tries, t_ini, alpha, 54, data]
+                solution, solution_fmed = parallel_annealing(*params)
 
     time_fin = time.time()
-
-    print("Best fmed:", solution_fmed)
-    print("Execution time:", time_fin-time_ini)
-    print("Best solution:", solution)
