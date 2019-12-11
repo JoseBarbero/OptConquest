@@ -38,7 +38,7 @@ def fmed(solution, data):
     """
     cost_matrix = np.zeros_like(data)
     cost_matrix[0] = np.add.accumulate(data[solution[0]])
-
+    
     # No se sigue el orden inicial de la matriz para evitar complicaciones de indexado,
     # las filas van en el orden de la solución respecto a la matriz inicial
     sum_last_column = cost_matrix[0, -1]

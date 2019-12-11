@@ -29,13 +29,10 @@ def accept(ini_solution, ini_solution_fmed, new_solution, t, data):
     p = np.exp((-(post - pre) / t))
 
     if post < pre:
-        #print(post, file=open("fmed_evolution.txt", "a"))
         return new_solution, post
     elif np.random.random() < p:
-        #print(post, file=open("fmed_evolution.txt", "a"))
         return new_solution, post
     else:
-        #print(pre, file=open("fmed_evolution.txt", "a"))
         return ini_solution, pre
 
 
@@ -66,14 +63,14 @@ def local_best_search(solution, solution_fmed, data, time_limit):
     best_solution = solution
     t_end = time.time() + time_limit
     
-    for neighbour in generate_neighbours(solution):
-        if time.time() < t_end:
-            neighbour_fmed = opt_fmed(neighbour, data)
-            if neighbour_fmed < best_fmed:
-                best_solution, best_fmed = neighbour, neighbour_fmed
-        else:
-            print("TIME'S UP")
-            return best_solution, best_fmed
+    while time.time() < t_end:
+        for neighbour in generate_neighbours(best_solution):
+            if time.time() < t_end:
+                neighbour_fmed = opt_fmed(neighbour, data)
+                if neighbour_fmed <= best_fmed:
+                    best_solution, best_fmed = neighbour, neighbour_fmed
+            else:
+                return best_solution, best_fmed
     return best_solution, best_fmed
 
 

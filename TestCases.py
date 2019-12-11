@@ -1,5 +1,5 @@
 from FlowShopUtils import *
-
+from cythonfmed import opt_fmed
 
 def reorder(cost_matrix, sol):
     """
@@ -26,5 +26,8 @@ sol_doc2_vec = [a-1 for a in sol_doc2_vec]
 doc1 = read_file("Datasets/Doc1.txt")
 doc2 = read_file("Datasets/Doc2.txt")
 
-print(reorder(f(sol_doc1_vec, doc1), sol_doc1_vec) == sol_doc1_mat)
-print(reorder(f(sol_doc2_vec, doc2), sol_doc2_vec) == sol_doc2_mat)
+print(reorder(opt_fmed(sol_doc1_vec, doc1)[1], sol_doc1_vec) == sol_doc1_mat)
+print(reorder(opt_fmed(sol_doc2_vec, doc2)[1], sol_doc2_vec) == sol_doc2_mat)
+
+print(reorder(opt_fmed(sol_doc1_vec, doc1)[1], sol_doc1_vec), sol_doc1_mat)
+print(reorder(opt_fmed(sol_doc2_vec, doc2)[1], sol_doc2_vec), sol_doc2_mat)
