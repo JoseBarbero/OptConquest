@@ -41,7 +41,8 @@ def simulated_annealing(tries, t_ini_factor, alpha, solution, time_, data):
     # Bucle de 60 segundos
     t_end = time.time() + time_ - 0.1
     solution_fmed = opt_fmed(solution, data)
-    t = solution_fmed * t_ini_factor
+    #t = solution_fmed * t_ini_factor
+    t = t_ini_factor
 
     while time.time() < t_end:
         for i in range(tries): # Tries before getting t down
