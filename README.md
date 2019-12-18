@@ -15,6 +15,10 @@ How to run:
     ```bash
     $ conda env create -f optconquestenv.yml 
     ```
+1. Activate conda environment
+    ```bash
+    $ conda activate optconquest
+    ```
 1. Compile Cython extension
     ```bash
     $ python setup.py build_ext --inplace
