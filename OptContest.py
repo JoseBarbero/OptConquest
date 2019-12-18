@@ -45,7 +45,7 @@ def parallel_evolutive(n_processes, mutation, ini_sol, time_, data_):
 def annealing_worker(params):
     tries, t_ini_factor, alpha, initial_solution, time_, data_ = params
     presolution, presolution_fmed = simulated_annealing(tries, t_ini_factor, alpha, initial_solution, time_, data_)
-    solution, solution_fmed = local_best_search(presolution, presolution_fmed, data, 60-time_) # El último parámetro es el tiempo de búsqueda local
+    solution, solution_fmed = local_best_search(presolution, presolution_fmed, data_, 60-time_) # El último parámetro es el tiempo de búsqueda local
     #print("Prelocal: ", presolution_fmed, "Postlocal:", solution_fmed)
     return solution, solution_fmed
 

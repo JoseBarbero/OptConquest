@@ -1,0 +1,7 @@
+name: optconquest
+channels:
+  - anaconda
+dependencies:
+  - python=3.7
+  - pandas=0.23.4
+  - cython=0.29.14
